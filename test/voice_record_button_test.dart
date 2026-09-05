@@ -12,7 +12,11 @@ import 'package:jaihind_voice/jaihind_voice.dart';
 void main() {
   late List<String> events;
 
-  Widget host({bool started = true, bool enabled = true}) {
+  Widget host({
+    bool started = true,
+    bool enabled = true,
+    Duration startDelay = Duration.zero,
+  }) {
     return MaterialApp(
       home: Scaffold(
         body: Center(
@@ -20,6 +24,8 @@ void main() {
             enabled: enabled,
             onStart: () async {
               events.add('start');
+              if (startDelay > Duration.zero) await Future.delayed(startDelay);
+
               return started;
             },
             onUpdate: (_, __) {},
@@ -156,6 +162,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(events.last, 'cancel');
+  });
+
+  testWidgets('a release during a slow start does not leave it recording', (
+    tester,
+  ) async {
+    // onStart asks for microphone permission and opens the recorder -- a
+    // platform round trip. Release during it and the end handler used to see
+    // an idle phase, decide nothing was live, and return; then onStart
+    // finished and began recording with the finger already gone.
+    //
+    // Found on a phone: released after two seconds, and the timer was still
+    // climbing at 0:53 with no way to stop it short of the five-minute limit.
+    await tester.pumpWidget(
+      host(startDelay: const Duration(milliseconds: 400)),
+    );
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(VoiceRecordButton)),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+
+    // Let go while onStart is still in flight.
+    await gesture.up();
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+
+    expect(
+      events,
+      contains('cancel'),
+      reason: 'a recording was left running with nobody holding it',
+    );
+    expect(
+      events,
+      isNot(contains('send')),
+      reason: 'a press too short to be a message was sent',
+    );
   });
 
   testWidgets('the touch target is big enough for a thumb', (tester) async {

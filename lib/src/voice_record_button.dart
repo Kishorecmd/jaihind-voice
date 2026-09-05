@@ -65,6 +65,17 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
   /// way to withdraw it.
   bool _interrupted = false;
 
+  /// The finger left before the microphone was ready.
+  ///
+  /// onStart is asynchronous -- it asks for permission and opens the recorder,
+  /// which is a platform round trip. If the press ends during it, _end runs
+  /// while the phase is still idle, decides nothing is live, and returns. Then
+  /// onStart finishes and starts recording with the finger already gone.
+  ///
+  /// Seen on the phone: released after two seconds and the timer was still
+  /// climbing at 0:53, with no way to stop it short of the five-minute limit.
+  bool _endedWhileStarting = false;
+
   bool get _live =>
       _phase != VoiceGesturePhase.idle && _phase != VoiceGesturePhase.locked;
 
@@ -76,9 +87,19 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
     _dy = 0;
     _resolved = false;
     _interrupted = false;
+    _endedWhileStarting = false;
 
     final started = await widget.onStart();
     if (!mounted) return;
+
+    if (_endedWhileStarting) {
+      // Nothing was held long enough to be a message, and the recorder is now
+      // running with nobody holding it. Stop it rather than leave it.
+      _resolved = true;
+      setState(() => _phase = VoiceGesturePhase.idle);
+      widget.onCancel();
+      return;
+    }
 
     if (!started) {
       // Permission refused, or the microphone was unavailable. Nothing is
@@ -133,7 +154,14 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
   }
 
   void _end(_) {
-    if (!_live || _resolved) return;
+    if (!_live) {
+      // Either nothing started, or onStart has not finished yet. Recording it
+      // is not safe to assume either way, so mark it and let _begin deal with
+      // whichever it turns out to be.
+      if (!_resolved) _endedWhileStarting = true;
+      return;
+    }
+    if (_resolved) return;
     _resolved = true;
 
     final phase = _phase;
