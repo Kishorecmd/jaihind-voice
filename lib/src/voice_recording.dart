@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 
 /// The rules of a voice recording, with no plugins attached.
@@ -39,6 +40,21 @@ class VoiceRecording {
   /// arrives without one — from another app, or an older build — is drawn with
   /// a neutral pattern instead, and that is honest: we do not know its shape.
   final List<double> waveform;
+
+  /// Removes the temporary file.
+  ///
+  /// Called when a recording is discarded, and after it has been uploaded.
+  /// Recordings left behind accumulate in the app's temp directory, and a
+  /// recording of someone's voice is not a thing to leave lying on a phone.
+  ///
+  /// Never throws: failing to delete a temp file is not worth interrupting
+  /// anyone over, and the platform clears the directory eventually.
+  Future<void> delete() async {
+    try {
+      final file = File(path);
+      if (await file.exists()) await file.delete();
+    } catch (_) {}
+  }
 }
 
 class VoiceRules {
