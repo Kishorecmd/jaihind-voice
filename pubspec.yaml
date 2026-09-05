@@ -1,0 +1,31 @@
+name: jaihind_voice
+description: >-
+  Voice notes for the Jaihind school apps: recording, the hold-to-talk gesture,
+  the waveform and the player. Shared so the parent and teacher apps cannot
+  drift apart on what a recording is allowed to be.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Recording, playback, the microphone permission and a temp directory.
+  #
+  # record is pinned to 6.x deliberately: 5.x resolves a record_linux that no
+  # longer implements its own platform interface and fails the Android build on
+  # a package neither app uses.
+  record: ^6.1.1
+  audioplayers: ^6.1.0
+  permission_handler: ^11.3.1
+  path_provider: ^2.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
