@@ -49,6 +49,20 @@ class VoiceRecorderService {
       ? Duration.zero
       : DateTime.now().difference(_startedAt!);
 
+  /// Reads the microphone permission WITHOUT asking for it.
+  ///
+  /// Called when a screen that can record opens, so that holding the button
+  /// does not pay for a permission round trip before the recorder even opens.
+  /// Deliberately never prompts: a microphone dialog on opening a screen reads
+  /// as surveillance, and the prompt belongs at the moment of recording.
+  Future<bool> warmUp() async {
+    try {
+      return (await Permission.microphone.status).isGranted;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Asks for the microphone, distinguishing "not now" from "not ever".
   ///
   /// The distinction matters: the platform silently ignores a second request
