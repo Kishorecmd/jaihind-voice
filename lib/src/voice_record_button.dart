@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'voice_gesture.dart';
-import 'voice_theme.dart';
+import 'package:jaihind_voice_player/jaihind_voice_player.dart';
 
 /// The microphone a parent holds to record.
 ///

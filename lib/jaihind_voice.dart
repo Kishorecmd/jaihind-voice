@@ -10,11 +10,12 @@
 /// file and a waveform; sending it is the app's business.
 library;
 
+// Everything a listener needs comes from the playback package, re-exported
+// so an app that records does not have to import two things.
+export 'package:jaihind_voice_player/jaihind_voice_player.dart';
+
 export 'src/recording_bars.dart';
 export 'src/voice_gesture.dart';
-export 'src/voice_note_player.dart';
 export 'src/voice_record_button.dart';
 export 'src/voice_recorder_service.dart';
 export 'src/voice_recording.dart';
-export 'src/voice_theme.dart';
-export 'src/waveform.dart';

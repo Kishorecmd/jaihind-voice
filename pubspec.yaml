@@ -18,8 +18,12 @@ dependencies:
   # record is pinned to 6.x deliberately: 5.x resolves a record_linux that no
   # longer implements its own platform interface and fails the Android build on
   # a package neither app uses.
+  # Playing a note back is its own package, so an app that only listens
+  # (the driver app) does not inherit a microphone permission from the
+  # recorder's manifest.
+  jaihind_voice_player:
+    path: ../jaihind-voice-player
   record: ^6.1.1
-  audioplayers: ^6.1.0
   permission_handler: ^11.3.1
   path_provider: ^2.1.4
 

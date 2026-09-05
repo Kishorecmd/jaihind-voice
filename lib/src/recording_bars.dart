@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'voice_recording.dart';
-import 'voice_theme.dart';
-import 'waveform.dart';
+import 'package:jaihind_voice_player/jaihind_voice_player.dart';
 
 /// The bar shown in place of the composer while a parent is holding to record.
 ///

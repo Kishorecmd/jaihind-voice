@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:jaihind_voice_player/jaihind_voice_player.dart';
+
 /// The rules of a voice recording, with no plugins attached.
 ///
 /// Separated from the recorder itself so they can be tested without a
@@ -71,9 +73,8 @@ class VoiceRules {
 
   /// How many bars a stored waveform is reduced to.
   ///
-  /// Enough to look like speech, small enough to sit in a database column and
-  /// travel with every message in a thread.
-  static const int waveformBars = 40;
+  /// Defined once, by the package that also reads them back.
+  static const int waveformBars = VoiceFormat.waveformBars;
 
   /// How often loudness is sampled while recording.
   static const Duration amplitudeInterval = Duration(milliseconds: 120);
@@ -92,12 +93,7 @@ class VoiceRules {
   }
 
   /// "0:07", and "1:05" rather than "1:5".
-  static String clock(Duration d) {
-    final m = d.inMinutes;
-    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
-
-    return '$m:$s';
-  }
+  static String clock(Duration d) => VoiceFormat.clock(d);
 
   /// Microphone loudness in dBFS, as 0..1.
   ///
@@ -151,19 +147,10 @@ class VoiceRules {
       .map((b) => (b.clamp(0.0, 1.0) * 99).round().toString().padLeft(2, '0'))
       .join();
 
-  /// Reads back what [encodeWaveform] wrote. Anything malformed gives an empty
-  /// list, and the bubble then draws its neutral pattern rather than throwing.
-  static List<double> decodeWaveform(String? raw) {
-    final text = (raw ?? '').trim();
-    if (text.isEmpty || text.length.isOdd) return const [];
-
-    final out = <double>[];
-    for (var i = 0; i < text.length; i += 2) {
-      final n = int.tryParse(text.substring(i, i + 2));
-      if (n == null) return const [];
-      out.add((n / 99).clamp(0.0, 1.0));
-    }
-
-    return out;
-  }
+  /// Reads back what [encodeWaveform] wrote.
+  ///
+  /// Delegated, because the app playing a note back must decode it exactly as
+  /// the app that recorded it encoded it, and two copies would drift.
+  static List<double> decodeWaveform(String? raw) =>
+      VoiceFormat.decodeWaveform(raw);
 }
