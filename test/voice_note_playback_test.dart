@@ -10,12 +10,13 @@ import 'package:jaihind_voice/jaihind_voice.dart';
 /// parent could see something had arrived and had no way to hear it — which is
 /// worse than the message not arriving, because it looks like their fault.
 void main() {
-  Widget host({bool onDark = false}) => MaterialApp(
+  Widget host({Color? background, Duration? duration}) => MaterialApp(
     home: Scaffold(
       body: Center(
         child: VoiceNotePlayer(
           url: 'https://erp.jaihind.school/uploads/messages/msg_x.m4a',
-          onDark: onDark,
+          background: background,
+          duration: duration,
         ),
       ),
     ),
@@ -48,16 +49,35 @@ void main() {
     expect(find.bySemanticsLabel('Play voice note'), findsOneWidget);
   });
 
-  testWidgets('readable on the parent\'s own blue bubble as well as white', (
-    tester,
-  ) async {
-    for (final onDark in [true, false]) {
-      await tester.pumpWidget(host(onDark: onDark));
+  testWidgets('readable on a dark bubble and on a pale one', (tester) async {
+    // Contrast is worked out from the colour actually behind the player, not
+    // from a flag. The flag lasted one build: the parent app's own bubble is
+    // dark blue and the teacher app's is pale green, both were passed "this is
+    // the sender's own bubble", and the teacher's voice notes rendered white
+    // on near-white -- a play button nobody could see.
+    for (final background in [
+      const Color(0xFF2563EB), // parent app, sender's own bubble
+      const Color(0xFFDCF8C6), // teacher app, school's own bubble
+      Colors.white,
+    ]) {
+      await tester.pumpWidget(host(background: background));
       await tester.pump();
 
       expect(tester.takeException(), isNull);
       expect(find.byIcon(Icons.play_arrow), findsOneWidget);
     }
+  });
+
+  testWidgets('a known length is shown before anything is downloaded', (
+    tester,
+  ) async {
+    // The duration travels with the message so a thread can say "0:18"
+    // without every phone fetching every recording to find out.
+    await tester.pumpWidget(host(duration: const Duration(seconds: 18)));
+    await tester.pump();
+
+    expect(find.text('0:18'), findsOneWidget);
+    expect(find.text('Voice note'), findsNothing);
   });
 
   testWidgets('survives large system text', (tester) async {

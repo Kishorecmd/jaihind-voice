@@ -16,14 +16,29 @@ class VoiceNotePlayer extends StatefulWidget {
   const VoiceNotePlayer({
     super.key,
     required this.url,
-    this.onDark = false,
+    this.background,
+    this.duration,
     this.theme,
   });
 
   final String url;
 
-  /// True on the sender's own tinted bubble, false on a plain one.
-  final bool onDark;
+  /// The colour actually behind this player.
+  ///
+  /// Contrast is worked out from it rather than taken as a flag from the
+  /// caller. That flag existed for one build and was wrong immediately: the
+  /// parent app's own bubble is a dark blue and the teacher app's is a pale
+  /// green, both were passed "this is the sender's bubble", and the teacher's
+  /// voice notes came out white on near-white -- a play button you could not
+  /// see. A colour cannot be got wrong in that way.
+  final Color? background;
+
+  /// The length, when it is already known from the message.
+  ///
+  /// Saves showing "Voice note" until the file has been fetched: the duration
+  /// is stored with the message precisely so a thread can say "0:18" without
+  /// every phone downloading every recording to find out.
+  final Duration? duration;
 
   /// Overrides the ambient theme. Rarely needed.
   final VoiceTheme? theme;
@@ -95,8 +110,14 @@ class _VoiceNotePlayerState extends State<VoiceNotePlayer> {
     // Was a hard-coded blue from the parent app. It now comes from whichever
     // app is drawing it, so the teacher app's own accent is used unchanged.
     final t = widget.theme ?? VoiceTheme.of(context);
-    final ink = widget.onDark ? Colors.white : t.accent;
-    final muted = widget.onDark ? Colors.white70 : t.muted;
+
+    // Light content only on a genuinely dark background.
+    final onDark =
+        (widget.background ?? Theme.of(context).colorScheme.surface)
+            .computeLuminance() <
+        0.4;
+    final ink = onDark ? Colors.white : t.accent;
+    final muted = onDark ? Colors.white70 : t.muted;
 
     if (_failed) {
       // A note that will not play has to say so. Silence is indistinguishable
@@ -116,7 +137,7 @@ class _VoiceNotePlayerState extends State<VoiceNotePlayer> {
       );
     }
 
-    final total = _length;
+    final total = _length ?? widget.duration;
     final progress = (total == null || total.inMilliseconds == 0)
         ? 0.0
         : (_position.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0);
@@ -138,12 +159,12 @@ class _VoiceNotePlayerState extends State<VoiceNotePlayer> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: widget.onDark ? Colors.white.withAlpha(48) : ink,
+                    color: onDark ? Colors.white.withAlpha(48) : ink,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     _playing ? Icons.pause : Icons.play_arrow,
-                    color: widget.onDark ? Colors.white : Colors.white,
+                    color: Colors.white,
                     size: 21,
                   ),
                 ),
@@ -160,11 +181,11 @@ class _VoiceNotePlayerState extends State<VoiceNotePlayer> {
                     child: LinearProgressIndicator(
                       value: progress,
                       minHeight: 4,
-                      backgroundColor: widget.onDark
+                      backgroundColor: onDark
                           ? Colors.white.withAlpha(60)
                           : Colors.black.withAlpha(26),
                       valueColor: AlwaysStoppedAnimation(
-                        widget.onDark ? Colors.white : ink,
+                        onDark ? Colors.white : ink,
                       ),
                     ),
                   ),
