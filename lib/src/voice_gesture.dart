@@ -80,8 +80,19 @@ class VoiceGesture {
           ? VoiceGesturePhase.willCancel
           : VoiceGesturePhase.willLock;
     }
-    if (cancelling && up < axisSlop) return VoiceGesturePhase.willCancel;
-    if (locking && left < axisSlop) return VoiceGesturePhase.willLock;
+    // Past the cancel threshold. Only a flat enough slide discards: a finger
+    // also travelling upward is reaching for the lock, so it locks instead.
+    // The fallback must never be `holding`, because releasing from `holding`
+    // sends — the one outcome a parent cannot undo.
+    if (cancelling) {
+      return up < axisSlop
+          ? VoiceGesturePhase.willCancel
+          : VoiceGesturePhase.willLock;
+    }
+
+    // Past the lock threshold, with or without sideways drift. Sideways travel
+    // short of cancelDistance is not a cancel, and holding would send.
+    if (locking) return VoiceGesturePhase.willLock;
 
     return VoiceGesturePhase.holding;
   }

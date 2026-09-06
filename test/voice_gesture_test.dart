@@ -66,11 +66,35 @@ void main() {
       );
     });
 
-    test('does not lock while the finger is clearly heading left', () {
-      expect(
-        VoiceGesture.phaseFor(-60, -75),
-        isNot(VoiceGesturePhase.willLock),
-      );
+    test('a left-leaning drag past the lock still locks, never sends', () {
+      // -60 has not reached cancelDistance, so this is not a cancel. The old
+      // fallback here was `holding`, which sent the note on release — the one
+      // outcome a parent cannot undo.
+      final phase = VoiceGesture.phaseFor(-60, -75);
+      expect(phase, VoiceGesturePhase.willLock);
+      expect(VoiceGesture.releaseSends(phase), isFalse);
+    });
+
+    test('a thumb that arcs while sliding to the bin never sends', () {
+      // A slide to cancel pivots at the base of the thumb, so it arcs upward.
+      // Each of these used to fall through to `holding` and send the note.
+      for (final dy in <double>[-13, -20, -35, -60]) {
+        expect(
+          VoiceGesture.releaseSends(VoiceGesture.phaseFor(-120, dy)),
+          isFalse,
+          reason: 'dy=$dy released as a send',
+        );
+      }
+    });
+
+    test('sideways drift while reaching the lock still locks', () {
+      for (final dx in <double>[-60, -25, -13, 13, 25]) {
+        expect(
+          VoiceGesture.phaseFor(dx, -90),
+          VoiceGesturePhase.willLock,
+          reason: 'dx=$dx did not lock',
+        );
+      }
     });
 
     test('when both are crossed, the further one wins', () {
