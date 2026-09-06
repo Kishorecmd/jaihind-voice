@@ -45,9 +45,6 @@ class VoiceRecorderService {
   /// Loudness so far, for the live waveform.
   List<double> get samples => List.unmodifiable(_samples);
 
-  Duration get elapsed => _startedAt == null
-      ? Duration.zero
-      : DateTime.now().difference(_startedAt!);
 
   /// Reads the microphone permission WITHOUT asking for it.
   ///
@@ -129,6 +126,37 @@ class VoiceRecorderService {
     }
   }
 
+  Duration _pausedDuration = Duration.zero;
+  DateTime? _pausedAt;
+
+  Duration get elapsed {
+    if (_startedAt == null) return Duration.zero;
+    var total = DateTime.now().difference(_startedAt!);
+    if (_pausedAt != null) {
+      total -= DateTime.now().difference(_pausedAt!);
+    }
+    return total - _pausedDuration;
+  }
+
+  Future<void> pause() async {
+    if (!isRecording || _pausedAt != null) return;
+    try {
+      await _rec.pause();
+      _pausedAt = DateTime.now();
+      _sampler?.cancel();
+    } catch (_) {}
+  }
+
+  Future<void> resume() async {
+    if (!isRecording || _pausedAt == null) return;
+    try {
+      await _rec.resume();
+      _pausedDuration += DateTime.now().difference(_pausedAt!);
+      _pausedAt = null;
+      _startSampling();
+    } catch (_) {}
+  }
+
   void _startSampling() {
     _sampler?.cancel();
     _sampler = Timer.periodic(VoiceRules.amplitudeInterval, (_) async {
@@ -155,6 +183,8 @@ class VoiceRecorderService {
     _sampler?.cancel();
     _path = null;
     _startedAt = null;
+    _pausedAt = null;
+    _pausedDuration = Duration.zero;
 
     try {
       await _rec.stop();
@@ -193,6 +223,8 @@ class VoiceRecorderService {
     _sampler?.cancel();
     _path = null;
     _startedAt = null;
+    _pausedAt = null;
+    _pausedDuration = Duration.zero;
     _samples.clear();
 
     if (path == null) return;
