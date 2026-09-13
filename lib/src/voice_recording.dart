@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:flutter/widgets.dart';
 import 'package:jaihind_voice_player/jaihind_voice_player.dart';
 
 /// The rules of a voice recording, with no plugins attached.
@@ -80,6 +81,35 @@ class VoiceRules {
   static const Duration amplitudeInterval = Duration(milliseconds: 120);
 
   static bool isTooShort(Duration d) => d < minLength;
+
+  /// Whether a recording should be thrown away now that the app is in [state].
+  ///
+  /// A recording must not outlive the screen it belongs to. A live microphone
+  /// with nothing on screen is one stray tap away from sending whatever it
+  /// picked up, and that has happened: an unattended locked recording ran while
+  /// an app was in the background and fourteen seconds of an empty room reached
+  /// a family.
+  ///
+  /// Locked recordings are included. Locking means the finger can leave the
+  /// button while you are still looking at the conversation — which is what
+  /// somebody who cannot hold a phone still for a minute needs. It was never
+  /// meant to mean the recorder keeps going once the app is gone.
+  ///
+  /// `inactive` is deliberately excluded: on iOS it fires for a glance at the
+  /// notification shade or a banner passing over the app, and discarding
+  /// somebody's half-spoken message because they looked at a notification
+  /// would be its own bug. The other three mean the app is genuinely away.
+  static bool abandonsRecording(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.detached:
+        return true;
+      case AppLifecycleState.resumed:
+      case AppLifecycleState.inactive:
+        return false;
+    }
+  }
 
   static bool shouldWarn(Duration elapsed) => elapsed >= warnAfter;
 

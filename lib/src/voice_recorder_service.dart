@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/widgets.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
@@ -39,6 +40,15 @@ class VoiceRecorderService {
   Timer? _sampler;
   final List<double> _samples = <double>[];
   DateTime? _startedAt;
+
+  AppLifecycleListener? _lifecycle;
+
+  /// Called when a recording was thrown away because the app left the screen.
+  ///
+  /// The recorder can stop a microphone it owns; it cannot reset a bar it does
+  /// not know about. Without this the screen goes on showing a recording bar
+  /// for a recording that no longer exists, and the send button does nothing.
+  void Function()? onAbandoned;
 
   bool get isRecording => _path != null;
 
@@ -117,6 +127,7 @@ class VoiceRecorderService {
       _startedAt = DateTime.now();
       _samples.clear();
       _startSampling();
+      _watchLifecycle();
 
       return true;
     } catch (_) {
@@ -218,6 +229,31 @@ class VoiceRecorderService {
   /// by the bin in locked mode.
   Future<void> cancel() => _discard();
 
+  /// A recording must not outlive the screen it belongs to.
+  ///
+  /// Enforced here rather than in each app's chat screen, because it is a
+  /// property of owning a microphone and not of any one conversation — and
+  /// because an app that forgets it does not fail visibly. It leaves a live
+  /// microphone running with nothing on screen, and the next stray tap on the
+  /// bar sends whatever it picked up.
+  ///
+  /// Which states count is [VoiceRules.abandonsRecording], with the other
+  /// rules rather than buried in a listener.
+  void _watchLifecycle() {
+    _lifecycle ??= AppLifecycleListener(
+      onStateChange: (state) {
+        if (isRecording && VoiceRules.abandonsRecording(state)) {
+          _abandon();
+        }
+      },
+    );
+  }
+
+  Future<void> _abandon() async {
+    await _discard();
+    onAbandoned?.call();
+  }
+
   Future<void> _discard() async {
     final path = _path;
     _sampler?.cancel();
@@ -243,6 +279,8 @@ class VoiceRecorderService {
 
   Future<void> dispose() async {
     await _discard();
+    _lifecycle?.dispose();
+    _lifecycle = null;
     try {
       await _rec.dispose();
     } catch (_) {}

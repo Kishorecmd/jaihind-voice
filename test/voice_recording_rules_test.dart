@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:jaihind_voice/jaihind_voice.dart';
@@ -175,6 +176,37 @@ void main() {
 
       for (final v in decoded) {
         expect(v, inInclusiveRange(0.0, 1.0));
+      }
+    });
+  });
+
+  group('a recording must not outlive the screen it belongs to', () {
+    test('the app going away throws the recording away', () {
+      // A live microphone with nothing on screen is one stray tap away from
+      // sending whatever it picked up. It happened: an unattended locked
+      // recording ran while an app was in the background and fourteen seconds
+      // of an empty room reached a family.
+      expect(VoiceRules.abandonsRecording(AppLifecycleState.paused), isTrue);
+      expect(VoiceRules.abandonsRecording(AppLifecycleState.hidden), isTrue);
+      expect(VoiceRules.abandonsRecording(AppLifecycleState.detached), isTrue);
+    });
+
+    test('a glance at a notification does not', () {
+      // On iOS `inactive` fires for the notification shade and for a banner
+      // passing over the app. Discarding a half-spoken message because
+      // somebody looked at a notification would be its own bug.
+      expect(VoiceRules.abandonsRecording(AppLifecycleState.inactive), isFalse);
+    });
+
+    test('the app being in front certainly does not', () {
+      expect(VoiceRules.abandonsRecording(AppLifecycleState.resumed), isFalse);
+    });
+
+    test('every state has an answer', () {
+      // A new lifecycle state must not silently default to "keep recording".
+      for (final state in AppLifecycleState.values) {
+        expect(() => VoiceRules.abandonsRecording(state), returnsNormally,
+            reason: '$state');
       }
     });
   });
