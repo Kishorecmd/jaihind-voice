@@ -24,6 +24,7 @@ class VoiceRecordButton extends StatefulWidget {
     required this.onCancel,
     required this.onLock,
     this.enabled = true,
+    this.filled = false,
     this.theme,
   });
 
@@ -41,6 +42,11 @@ class VoiceRecordButton extends StatefulWidget {
 
   /// Overrides the ambient theme. Rarely needed.
   final VoiceTheme? theme;
+
+  /// Draws the resting button as a filled accent disc with a white microphone,
+  /// rather than a bare icon. Off by default so existing callers keep the
+  /// button they already have.
+  final bool filled;
 
   @override
   State<VoiceRecordButton> createState() => _VoiceRecordButtonState();
@@ -219,7 +225,7 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
               decoration: BoxDecoration(
                 color: travelling
                     ? t.danger.withValues(alpha: 0.12)
-                    : Colors.transparent,
+                    : (widget.filled ? t.accent : Colors.transparent),
                 shape: BoxShape.circle,
               ),
               child: AnimatedScale(
@@ -228,7 +234,9 @@ class _VoiceRecordButtonState extends State<VoiceRecordButton> {
                 child: Icon(
                   Icons.mic_none,
                   size: 24,
-                  color: travelling ? t.danger : (_live ? t.accent : t.ink),
+                  color: travelling
+                      ? t.danger
+                      : (widget.filled ? Colors.white : (_live ? t.accent : t.ink)),
                 ),
               ),
             ),
